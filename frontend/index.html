@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lead Scoring Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f3f4f6;
+        }
+
+        h2 {
+            color: #1f2937;
+        }
+
+        form,
+        table {
+            background: #fff;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        th {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Lead Scoring Form</h2>
+    <form id="leadForm">
+        <input type="email" name="Email" placeholder="Email" required />
+        <input type="number" name="CreditScore" placeholder="Credit Score (300–850)" required min="300" max="850" />
+
+        <select name="AgeGroup" required>
+            <option value="">Age Group</option>
+            <option value="18-25">18–25</option>
+            <option value="26-35">26–35</option>
+            <option value="36-50">36–50</option>
+            <option value="51+">51+</option>
+        </select>
+
+        <select name="FamilyBackground" required>
+            <option value="">Family Background</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Married with Kids">Married with Kids</option>
+        </select>
+
+        <input type="number" name="Income" placeholder="Annual Income (INR)" required />
+
+        <select name="Profession" required>
+            <option value="">Profession</option>
+            <option value="Engineer">Engineer</option>
+            <option value="Teacher">Teacher</option>
+            <option value="Doctor">Doctor</option>
+            <option value="Manager">Manager</option>
+            <option value="Sales Rep">Sales Rep</option>
+            <option value="Freelancer">Freelancer</option>
+            <option value="Unemployed">Unemployed</option>
+        </select>
+
+        <select name="CompanyType" required>
+            <option value="">Company Type</option>
+            <option value="Startup">Startup</option>
+            <option value="MNC">MNC</option>
+            <option value="Government">Government</option>
+            <option value="Self-employed">Self-employed</option>
+        </select>
+
+        <select name="City" required>
+            <option value="">City</option>
+            <option value="Mumbai">Mumbai</option>
+            <option value="Delhi">Delhi</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Hyderabad">Hyderabad</option>
+            <option value="Pune">Pune</option>
+            <option value="Ahmedabad">Ahmedabad</option>
+        </select>
+
+        <textarea name="Comment" placeholder="Lead Comments" required></textarea>
+
+
+        <div style="display:table; margin:auto">
+            <div>
+                <input type="checkbox" id="Consent" name="Consent" required />
+            </div>
+            <div>
+                I consent to data processing
+            </div>
+        </div>
+
+
+        <br><br>
+        <button type="submit">Score Lead</button>
+    </form>
+
+    <h2>Scored Leads</h2>
+
+    <!-- Sorting Dropdown -->
+    <label for="sortSelect"><strong>Sort By:</strong></label>
+    <select id="sortSelect">
+        <option value="">None</option>
+        <option value="initial_desc">Initial Score ↓</option>
+        <option value="initial_asc">Initial Score ↑</option>
+        <option value="reranked_desc">Re-ranked Score ↓</option>
+        <option value="reranked_asc">Re-ranked Score ↑</option>
+    </select>
+
+    <table id="leadTable">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Credit Score</th>
+                <th>Annual Income</th>
+                <th>Initial Score</th>
+                <th>Re-ranked Score</th>
+                <th>Comment</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const form = document.getElementById('leadForm');
+        const tableBody = document.querySelector('#leadTable tbody');
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const payload = {};
+
+            formData.forEach((value, key) => {
+                if (key === 'Consent') {
+                    payload[key] = true;
+                } else if (!isNaN(value) && key !== 'Email' && key !== 'AgeGroup' && key !== 'FamilyBackground' && key !== 'Profession' && key !== 'CompanyType' && key !== 'City' && key !== 'Comment') {
+                    payload[key] = Number(value);
+                } else {
+                    payload[key] = value;
+                }
+            });
+
+            try {
+                const res = await fetch("http://127.0.0.1:8000/score", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error("Scoring failed");
+
+                const data = await res.json();
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${payload.Email}</td>
+                    <td>${payload.CreditScore}</td>
+                    <td>${payload.Income}</td>
+                    <td>${data.initial_score}</td>
+                    <td>${data.reranked_score}</td>
+                    <td>${payload.Comment}</td>
+                `;
+                tableBody.prepend(row);
+
+                form.reset();
+            } catch (err) {
+                alert("Error scoring lead: " + err.message);
+            }
+        };
+
+        document.getElementById('sortSelect').onchange = function () {
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+            const sortType = this.value;
+
+            rows.sort((a, b) => {
+                const getNumber = (el, idx) => Number(el.children[idx].textContent);
+                let index;
+
+                if (sortType.includes("initial")) index = 3;
+                else if (sortType.includes("reranked")) index = 4;
+
+                const aVal = getNumber(a, index);
+                const bVal = getNumber(b, index);
+
+                return sortType.endsWith("asc") ? aVal - bVal : bVal - aVal;
+            });
+
+            rows.forEach(row => tableBody.appendChild(row));
+        };
+    </script>
+
+</body>
+
+</html>
