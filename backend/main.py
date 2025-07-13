@@ -8,7 +8,7 @@ import logging
 import os
 
 # ✅ Correctly load model from root directory
-model_path = os.path.join(os.path.dirname(__file__), "..", "lead_intent_model.pkl")
+model_path = os.path.join(os.path.dirname(__file__), "lead_intent_model.pkl")
 model = joblib.load(model_path)
 
 # Set up logging
